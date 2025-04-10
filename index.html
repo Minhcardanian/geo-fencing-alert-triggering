@@ -1,105 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>IoT Geo-Fencing Demo</title>
+  <meta charset="UTF-8">
+  <title>IoT Geofencing Demo – Rect Cluster + Circle Zones</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    /* Layout and responsiveness */
+    /* Layout: left map, right side controls, log at bottom of right panel */
     html, body {
+      margin: 0; 
+      padding: 0; 
+      height: 100%; 
+      width: 100%;
+      font-family: Arial, sans-serif;
+    }
+    #appContainer {
+      display: flex; 
+      flex-direction: row; 
+      width: 100%; 
       height: 100%;
-      margin: 0;
-      padding: 0;
+    }
+    /* Left panel = map */
+    #mapContainer {
+      flex: 1; 
+      position: relative; 
+      min-width: 400px;
     }
     #map {
-      height: 40vh; 
-      width: 100vw;
+      width: 100%; 
+      height: 100%;
     }
-
-    /* Containers for forms and controls */
-    .section {
-      padding: 10px;
-      background: #f7f7f7;
-      border-top: 1px solid #ccc;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      align-items: center;
+    /* Right panel = controls + log */
+    #rightPane {
+      width: 420px; 
+      min-width: 320px; 
+      display: flex; 
+      flex-direction: column; 
+      border-left: 1px solid #ccc;
+      overflow: hidden; /* just to ensure a clean border */
     }
-
-    /* A sub-section for zone or path forms */
-    .sub-section {
-      background: #eaeaea;
-      padding: 10px;
-      flex: 1 1 300px; /* Grows/shrinks nicely */
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      align-items: center;
+    #controls {
+      flex: 1; 
+      padding: 10px; 
+      background: #f7f7f7; 
+      overflow-y: auto;
     }
-
-    /* Input and button styling */
-    input[type="number"], input[type="text"] {
-      width: 7rem;
-      padding: 4px;
-      box-sizing: border-box;
-    }
-    button {
-      cursor: pointer;
-      padding: 6px 12px;
-    }
-
-    /* Log panel for output messages */
     #log {
-      height: 20vh; 
-      width: 100vw; 
+      height: 200px; 
+      background: #eee; 
       overflow-y: auto; 
       padding: 10px; 
-      background: #eee; 
-      font-family: monospace; 
+      border-top: 1px solid #ccc;
       font-size: 0.9em;
+    }
+
+    /* Subsections for clarity */
+    .section {
+      background: #fafafa;
+      margin-bottom: 1rem;
+      padding: 10px;
+      border: 1px solid #ddd;
+    }
+    .section h3 {
+      margin: 0 0 0.5rem;
+      font-size: 1.1em;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 4px;
+    }
+    .section button {
+      margin-right: 4px;
+      padding: 5px 8px;
+      cursor: pointer;
+    }
+    .section input[type="number"] {
+      width: 5rem;
+      margin-right: 4px;
+      padding: 3px;
     }
   </style>
 </head>
 <body>
+<div id="appContainer">
   <!-- 1) Map Container -->
-  <div id="map"></div>
-
-  <!-- 2) Zone Form Section -->
-  <div class="section">
-    <div class="sub-section">
-      <strong>Add/Customize Zones:</strong>
-      <input type="text" id="zoneName" placeholder="Zone Name" />
-      <input type="number" step="0.000001" id="zoneLat" placeholder="Lat" />
-      <input type="number" step="0.000001" id="zoneLon" placeholder="Lon" />
-      <input type="number" id="zoneRadius" placeholder="Radius(m)" />
-      <button id="addZoneBtn">Add Zone</button>
-      <button id="pinZoneBtn">Pinpoint Zone</button>
-      <button id="randomZoneBtn">Random Zone</button>
-    </div>
-    <div class="sub-section">
-      <strong>Add Path Points:</strong>
-      <input type="number" step="0.000001" id="pathLat" placeholder="Lat" />
-      <input type="number" step="0.000001" id="pathLon" placeholder="Lon" />
-      <button id="addPathBtn">Add Point</button>
-      <button id="pinPathBtn">Pinpoint Path</button>
-      <button id="clearPathBtn">Clear Path</button>
-    </div>
+  <div id="mapContainer">
+    <div id="map"></div>
   </div>
 
-  <!-- 3) Simulation Controls -->
-  <div class="section" id="controls">
-    <button id="startBtn">Start Simulation</button>
-    <button id="stopBtn">Stop Simulation</button>
+  <!-- 2) Right Pane: Controls + Log -->
+  <div id="rightPane">
+    <div id="controls">
+      <!-- Rectangular Cluster -->
+      <div class="section">
+        <h3>1. Cluster Rectangle</h3>
+        <p>Click "Set Cluster", then click twice on the map: 1st corner & 2nd corner.</p>
+        <button id="setClusterBtn">Set Cluster</button>
+        <p>Rectangle draws once 2 corners are chosen.</p>
+      </div>
+
+      <!-- Zones: Circle inside cluster -->
+      <div class="section">
+        <h3>2. Add Circle Zones</h3>
+        <p>Enter radius, then click "Add Zone", then click inside cluster to set center.</p>
+        <input type="number" id="zoneRadiusInput" placeholder="Radius (m)" />
+        <button id="addZoneBtn">Add Zone</button>
+        <p>Up to 10 zones. Each zone is a circle with random color.</p>
+      </div>
+
+      <!-- A & B -->
+      <div class="section">
+        <h3>3. Points A & B</h3>
+        <p>Click "Set A & B", then click 2 points inside cluster: 1st for A, 2nd for B.</p>
+        <button id="setABBtn">Set A & B</button>
+        <p>A: <span id="aCoords">[Not set]</span><br/>
+           B: <span id="bCoords">[Not set]</span></p>
+      </div>
+
+      <!-- Path & Simulation -->
+      <div class="section">
+        <h3>4. Path & Simulation</h3>
+        <p>Generate path from A→B in N steps.</p>
+        <input type="number" id="numStepsInput" placeholder="# Steps" />
+        <button id="genPathBtn">Generate Path</button>
+        <button id="clearPathBtn">Clear Path</button>
+        <br/><br/>
+        <button id="startBtn">Start Simulation</button>
+        <button id="stopBtn">Stop Simulation</button>
+      </div>
+    </div>
+    <div id="log"><strong>Log Panel:</strong><br/></div>
   </div>
+</div>
 
-  <!-- 4) Log Panel -->
-  <div id="log"><strong>Log Panel:</strong><br></div>
+<!-- Leaflet / Turf -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
 
-  <!-- 5) Libraries & Script -->
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
-  <script src="script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
