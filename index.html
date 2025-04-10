@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>IoT Geo-Fencing Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0; }
+    #map { height: 40vh; width: 100vw; }
+
+    /* Simple layout */
+    #controls, #zoneForm, #pathForm {
+      padding: 10px;
+      background: #f7f7f7;
+      border-top: 1px solid #ccc;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    #zoneForm, #pathForm {
+      background: #eaeaea;
+    }
+    input[type="number"], input[type="text"] {
+      width: 6rem;
+    }
+    button {
+      cursor: pointer;
+    }
+
+    #log {
+      height: 20vh;
+      width: 100vw;
+      overflow-y: auto;
+      padding: 10px;
+      background: #eee;
+      font-family: monospace;
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <!-- 1) Map Container -->
+  <div id="map"></div>
+
+  <!-- 2) Zone Form -->
+  <div id="zoneForm">
+    <strong>Add/Customize Zones:</strong>
+    <input type="text" id="zoneName" placeholder="Zone Name" />
+    <input type="number" step="0.000001" id="zoneLat" placeholder="Lat" />
+    <input type="number" step="0.000001" id="zoneLon" placeholder="Lon" />
+    <input type="number" id="zoneRadius" placeholder="Radius(m)" />
+    <button id="addZoneBtn">Add Zone</button>
+  </div>
+
+  <!-- 3) Path Form -->
+  <div id="pathForm">
+    <strong>Add Path Points:</strong>
+    <input type="number" step="0.000001" id="pathLat" placeholder="Lat" />
+    <input type="number" step="0.000001" id="pathLon" placeholder="Lon" />
+    <button id="addPathBtn">Add Point</button>
+    <button id="clearPathBtn">Clear Path</button>
+  </div>
+
+  <!-- 4) Controls -->
+  <div id="controls">
+    <button id="startBtn">Start Simulation</button>
+    <button id="stopBtn">Stop Simulation</button>
+  </div>
+
+  <!-- 5) Log Panel -->
+  <div id="log"><strong>Log Panel:</strong><br></div>
+
+  <!-- 6) Script Dependencies -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
