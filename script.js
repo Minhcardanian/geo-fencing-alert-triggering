@@ -6,18 +6,29 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: 'Map data © OpenStreetMap contributors'
 }).addTo(map);
 
-// For freeform cluster polygon
-let clusterPoints = [];
-let clusterMarkers = [];
-let clusterPolygon = null;  // Leaflet polygon
-let turfClusterPoly = null; // turf polygon
-let clusterActive = false;  // Are we drawing the cluster?
+// Initialize Geoman controls (only enable polygon drawing)
+map.pm.addControls({
+  position: 'topleft',
+  drawMarker: false,
+  drawCircle: false,
+  drawPolyline: false,
+  drawRectangle: false,
+  drawCircleMarker: false,
+  drawPolygon: true,
+  editMode: true,
+  dragMode: true,
+  removalMode: false,
+});
+
+// Cluster polygon variables
+let clusterPolygon = null;    // Leaflet polygon for the cluster
+let turfClusterPoly = null;   // Turf polygon for checks
 
 // Circle zones
 let zoneCount = 0;
 const maxZones = 10;
-const zones = [];        // array of { circle, turfPoly }
-let wasInsideZones = []; // track device in/out for zones
+const zones = [];         // array of { circle, turfPoly }
+let wasInsideZones = [];  // track device in/out for zones
 
 // Points A & B
 let pointA = null;
@@ -25,21 +36,20 @@ let pointB = null;
 let markerA = null;
 let markerB = null;
 
-// Path
+// Path & simulation
 let path = [];
-let markerDevice = null;  // "car" emoji marker
+let markerDevice = null;
 let pathIndex = 0;
 let simulationRunning = false;
 
-// Click modes: 'idle', 'cluster', 'zone', 'setAB'
-let clickMode = 'idle';
+// Click mode for additional functions (for zones or set A/B)
+let clickMode = 'idle'; // 'zone' or 'setAB' when active
 
 // -------------------------------------------
-// 2) DOM Elements
+// 2) DOM ELEMENTS
 // -------------------------------------------
 const logPanel          = document.getElementById("log");
-const setClusterBtn     = document.getElementById("setClusterBtn");
-const finishClusterBtn  = document.getElementById("finishClusterBtn");
+const clearClusterBtn   = document.getElementById("clearClusterBtn");
 const addZoneBtn        = document.getElementById("addZoneBtn");
 const zoneRadiusInput   = document.getElementById("zoneRadiusInput");
 const setABBtn          = document.getElementById("setABBtn");
@@ -61,119 +71,109 @@ function logMessage(msg) {
 }
 
 // -------------------------------------------
-// 4) CLUSTER (FREEFORM POLYGON)
+// 4) CLUSTER POLYGON VIA GEOMAN
 // -------------------------------------------
-setClusterBtn.addEventListener("click", () => {
-  clickMode = 'cluster';
-  clusterActive = true;
-  // Reset existing cluster data
-  clusterPoints = [];
-  clusterMarkers.forEach(m => map.removeLayer(m));
-  clusterMarkers = [];
+// Listen for when the user creates a polygon using Geoman
+map.on('pm:create', e => {
+  if (e.layer && e.layer instanceof L.Polygon) {
+    // When a polygon is created, assume it is the cluster polygon
+    if (clusterPolygon) {
+      // If one exists already, remove it
+      map.removeLayer(clusterPolygon);
+    }
+    clusterPolygon = e.layer;
+    // Optionally, disable drawing mode after creation:
+    map.pm.disableDraw('Polygon');
+
+    // Convert the polygon's latlngs into [lng, lat] coordinates
+    const latlngs = clusterPolygon.getLatLngs()[0];
+    const coords = latlngs.map(pt => [pt.lng, pt.lat]);
+    // Close the ring
+    coords.push([coords[0][0], coords[0][1]]);
+    turfClusterPoly = turf.polygon([coords]);
+    logMessage("Cluster polygon drawn and saved (editable via Geoman).");
+  }
+});
+
+// Optional: allow user to clear the cluster polygon manually
+clearClusterBtn.addEventListener("click", () => {
   if (clusterPolygon) {
     map.removeLayer(clusterPolygon);
     clusterPolygon = null;
+    turfClusterPoly = null;
+    logMessage("Cluster polygon cleared.");
+  } else {
+    logMessage("No cluster polygon to clear.");
   }
-  turfClusterPoly = null;
-  logMessage("Freeform cluster mode: click multiple points (3+). Then click 'Finish Cluster'.");
-});
-
-finishClusterBtn.addEventListener("click", () => {
-  if (!clusterActive || clusterPoints.length < 3) {
-    logMessage("⚠️ Need at least 3 points to form a polygon cluster.");
-    return;
-  }
-  clusterActive = false;
-  // Create Leaflet polygon
-  clusterPolygon = L.polygon(clusterPoints, { color: 'green' }).addTo(map);
-  // Create turf polygon
-  const coords = clusterPoints.map(latlng => [latlng.lng, latlng.lat]);
-  coords.push([coords[0][0], coords[0][1]]); // close ring
-  turfClusterPoly = turf.polygon([coords]);
-  logMessage("Cluster polygon created!");
-  clickMode = 'idle';
 });
 
 // -------------------------------------------
-// 5) ADD ZONE (CIRCLE)
+// 5) ADD CIRCLE ZONES
 // -------------------------------------------
 addZoneBtn.addEventListener("click", () => {
   if (!turfClusterPoly) {
-    logMessage("⚠️ Cluster polygon not finished. Define it first.");
+    logMessage("⚠️ Cluster polygon not set. Please draw it first using Geoman.");
     return;
   }
   if (zoneCount >= maxZones) {
-    logMessage("⚠️ Already at max zones.");
+    logMessage("⚠️ Already reached maximum of 10 zones.");
     return;
   }
   const rVal = parseFloat(zoneRadiusInput.value);
   if (Number.isNaN(rVal) || rVal <= 0) {
-    logMessage("⚠️ Invalid radius.");
+    logMessage("⚠️ Invalid radius value.");
     return;
   }
   clickMode = 'zone';
-  logMessage(`Click inside cluster to place circle zone (r=${rVal}m).`);
+  logMessage(`Click inside the cluster polygon to place a circle zone (r=${rVal}m).`);
 });
 
 // -------------------------------------------
-// 6) SET A & B
+// 6) SET POINTS A & B
 // -------------------------------------------
 setABBtn.addEventListener("click", () => {
   if (!turfClusterPoly) {
-    logMessage("⚠️ Cluster polygon not done. Set it first.");
+    logMessage("⚠️ Cluster polygon not set. Draw it first.");
     return;
   }
   clickMode = 'setAB';
-  logMessage("Click 2 points inside cluster: 1st for A, 2nd for B.");
+  logMessage("Click 2 points inside the cluster polygon: 1st for A, 2nd for B.");
 });
 
 // -------------------------------------------
-// 7) MAP CLICK (ALWAYS SHOW A MARKER)
+// 7) MAP CLICK HANDLER (for zone and set A/B)
 // -------------------------------------------
-map.on("click", (e) => {
+map.on("click", e => {
   const { lat, lng } = e.latlng;
-
-  // Always place a small grey circle marker to show user clicks
+  // Always add a small grey marker for feedback
   L.circleMarker(e.latlng, {
     radius: 3,
     color: 'grey',
     opacity: 0.7
   }).addTo(map);
 
-  // 7.1) cluster mode
-  if (clickMode === 'cluster') {
-    if (!clusterActive) {
-      logMessage("⚠️ Press 'Set Cluster' again if you want to redefine the polygon.");
-      return;
-    }
-    clusterPoints.push(e.latlng);
-    const cMarker = L.circleMarker(e.latlng, { radius: 5, color: 'purple' }).addTo(map);
-    clusterMarkers.push(cMarker);
-    logMessage(`Cluster point #${clusterPoints.length} at [${lat.toFixed(5)}, ${lng.toFixed(5)}].`);
-  }
-
-  // 7.2) zone mode
-  else if (clickMode === 'zone') {
+  // Check additional modes:
+  // a) Zone mode
+  if (clickMode === 'zone') {
     if (!insideCluster(lat, lng)) {
-      logMessage("🛑 This click is outside the cluster polygon. Try again.");
+      logMessage("🛑 Click is outside the cluster polygon. Try again.");
       return;
     }
     const rVal = parseFloat(zoneRadiusInput.value);
-    const color = randomColor();
-    const circle = L.circle([lat, lng], { radius: rVal, color }).addTo(map);
+    const zoneColor = randomColor();
+    const circle = L.circle([lat, lng], { radius: rVal, color: zoneColor }).addTo(map);
     zoneCount++;
-    logMessage(`➕ Zone${zoneCount} center=[${lat.toFixed(5)}, ${lng.toFixed(5)}], r=${rVal}m`);
-    // create turf circle
+    logMessage(`➕ Zone${zoneCount} created at [${lat.toFixed(5)}, ${lng.toFixed(5)}] with radius ${rVal}m.`);
+    // Create Turf circle for detection
     const turfPoly = turf.circle([lng, lat], rVal / 1000, { steps: 64, units: 'kilometers' });
     zones.push({ circle, turfPoly });
     wasInsideZones.push(false);
     clickMode = 'idle';
   }
-
-  // 7.3) setAB
+  // b) Set A & B mode
   else if (clickMode === 'setAB') {
     if (!insideCluster(lat, lng)) {
-      logMessage("🛑 Must be inside cluster polygon.");
+      logMessage("🛑 Must click inside cluster polygon.");
       return;
     }
     if (!pointA) {
@@ -193,7 +193,7 @@ map.on("click", (e) => {
   }
 });
 
-// Check if lat/lng inside freeform cluster polygon
+// Utility: Check if a point is inside cluster polygon using Turf
 function insideCluster(lat, lng) {
   if (!turfClusterPoly) return false;
   const pt = turf.point([lng, lat]);
@@ -201,32 +201,26 @@ function insideCluster(lat, lng) {
 }
 
 // -------------------------------------------
-// 8) GENERATE A→B PATH
+// 8) GENERATE A→B PATH (Interpolation)
 // -------------------------------------------
 genPathBtn.addEventListener("click", () => {
   if (!pointA || !pointB) {
-    logMessage("⚠️ A or B not set.");
+    logMessage("⚠️ Points A and B are not set.");
     return;
   }
   clearPath();
   let steps = parseInt(numStepsInput.value, 10);
   if (Number.isNaN(steps) || steps < 2) steps = 10;
-
   const [latA, lngA] = pointA;
   const [latB, lngB] = pointB;
   const dLat = (latB - latA) / (steps - 1);
   const dLng = (lngB - lngA) / (steps - 1);
-
-  for (let i=0; i<steps; i++) {
-    path.push([latA + dLat*i, lngA + dLng*i]);
+  for (let i = 0; i < steps; i++) {
+    path.push([latA + dLat * i, lngA + dLng * i]);
   }
-  logMessage(`🔄 Path generated with ${steps} steps. Path size: ${path.length}`);
-
-  if (!markerDevice && path.length>0) {
-    // Instead of a circleMarker, we use a custom "car" emoji icon
-    markerDevice = L.marker(path[0], {
-      icon: carEmojiIcon()
-    }).addTo(map);
+  logMessage(`🔄 Path generated with ${steps} steps (size: ${path.length}).`);
+  if (!markerDevice && path.length > 0) {
+    markerDevice = L.marker(path[0], { icon: carEmojiIcon() }).addTo(map);
   } else if (markerDevice) {
     markerDevice.setLatLng(path[0]);
   }
@@ -255,7 +249,7 @@ startBtn.addEventListener("click", () => {
     return;
   }
   if (path.length < 2) {
-    logMessage("⚠️ Need at least 2 points in path.");
+    logMessage("⚠️ Need at least 2 path points.");
     return;
   }
   simulationRunning = true;
@@ -265,8 +259,8 @@ startBtn.addEventListener("click", () => {
   } else {
     markerDevice.setLatLng(path[0]);
   }
-  // reset zone states
-  for (let i=0; i<wasInsideZones.length; i++) {
+  // Reset zone states
+  for (let i = 0; i < wasInsideZones.length; i++) {
     wasInsideZones[i] = false;
   }
   logMessage("Simulation started.");
@@ -289,28 +283,26 @@ function moveDevice() {
     simulationRunning = false;
     return;
   }
-
   const [lat, lng] = path[pathIndex++];
   markerDevice.setLatLng([lat, lng]);
 
-  // Check circle zones for enter/exit
+  // Check all zones for enter/exit events
   zones.forEach((z, idx) => {
     const pt = turf.point([lng, lat]);
     const isInside = turf.booleanPointInPolygon(pt, z.turfPoly);
     if (isInside && !wasInsideZones[idx]) {
-      logMessage(`🚨 ENTERED Zone${idx+1}`);
+      logMessage(`🚨 ENTERED Zone${idx + 1}`);
     }
     if (!isInside && wasInsideZones[idx]) {
-      logMessage(`⚠️ EXITED Zone${idx+1}`);
+      logMessage(`⚠️ EXITED Zone${idx + 1}`);
     }
     wasInsideZones[idx] = isInside;
   });
-
   setTimeout(moveDevice, 1200);
 }
 
 // -------------------------------------------
-// ICONS: A (Red), B (Blue), Car Emoji
+// 11) ICONS: A (Red), B (Blue), Car Emoji
 // -------------------------------------------
 function redIcon() {
   return L.icon({
@@ -333,34 +325,29 @@ function blueIcon() {
   });
 }
 
-// We can create a "car" emoji icon in Leaflet by embedding an emoji
-// in a data-URL or using a custom DOM element. Here's a simple example
-// using a data-URL with text inside an SVG.
+// Car emoji icon using an SVG data URL
 function carEmojiIcon() {
-  // Using an SVG with text "🚗" or any emoji
   const svgContent = encodeURIComponent(`
     <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40">
       <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="24">🚗</text>
     </svg>
   `);
   const dataUrl = `data:image/svg+xml,${svgContent}`;
-  
   return L.icon({
     iconUrl: dataUrl,
     iconSize: [40, 40],
     iconAnchor: [20, 20],
-    popupAnchor: [0, -20],
-    className: 'car-emoji-icon'
+    popupAnchor: [0, -20]
   });
 }
 
 // -------------------------------------------
-// UTILS
+// 12) UTILS
 // -------------------------------------------
 function randomColor() {
   const letters = '0123456789ABCDEF';
   let color = '#';
-  for (let i=0; i<6; i++) {
+  for (let i = 0; i < 6; i++) {
     color += letters[Math.floor(Math.random() * 16)];
   }
   return color;

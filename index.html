@@ -2,10 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Freeform Cluster + Circle Zones (Car Emoji Marker)</title>
+  <title>Freeform Cluster + Circle Zones (Leaflet-Geoman)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <!-- Leaflet-Geoman CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css" />
   <style>
     html, body {
       margin: 0;
@@ -76,7 +78,7 @@
 </head>
 <body>
 <div id="appContainer">
-  <!-- Left: Map -->
+  <!-- Left: Map Container -->
   <div id="mapContainer">
     <div id="map"></div>
   </div>
@@ -84,18 +86,19 @@
   <!-- Right: Controls & Log -->
   <div id="rightPane">
     <div id="controls">
-      <!-- 1) Freeform Cluster Polygon -->
+      <!-- 1) Cluster Polygon -->
       <div class="section">
-        <h3>1. Freeform Cluster Polygon</h3>
-        <p>Click "Set Cluster" to add multiple corners (3+). Then click "Finish Cluster" to close the polygon.</p>
-        <button id="setClusterBtn">Set Cluster</button>
-        <button id="finishClusterBtn">Finish Cluster</button>
+        <h3>1. Cluster Polygon</h3>
+        <p>Use the Geoman drawing tools (top-left) to draw and edit a polygon representing the cluster area.</p>
+        <p>When finished, the polygon is automatically saved for later checks.</p>
+        <!-- Optional: A button to clear the cluster -->
+        <button id="clearClusterBtn">Clear Cluster</button>
       </div>
 
       <!-- 2) Add Circle Zones -->
       <div class="section">
         <h3>2. Add Circle Zones</h3>
-        <p>Enter radius (m), then click "Add Zone". Then 1 map click = circle center. Up to 10 zones.</p>
+        <p>Enter a radius (m), then click "Add Zone" and click inside the cluster to place a circular zone. (Up to 10 zones.)</p>
         <input type="number" id="zoneRadiusInput" placeholder="Radius (m)" />
         <button id="addZoneBtn">Add Zone</button>
       </div>
@@ -103,7 +106,7 @@
       <!-- 3) Points A & B -->
       <div class="section">
         <h3>3. Points A & B</h3>
-        <p>Click "Set A & B", then pick 2 points inside polygon: 1st = A, 2nd = B.</p>
+        <p>Click "Set A & B", then pick 2 points inside the cluster: the first will be A (red) and the second B (blue).</p>
         <button id="setABBtn">Set A & B</button>
         <p>A: <span id="aCoords">[Not set]</span><br/>
            B: <span id="bCoords">[Not set]</span></p>
@@ -112,7 +115,7 @@
       <!-- 4) Path & Simulation -->
       <div class="section">
         <h3>4. Path & Simulation</h3>
-        <p>Generate path from A→B in N steps.</p>
+        <p>Generate a path from A to B in N steps, then simulate the device moving along the path.</p>
         <input type="number" id="numStepsInput" placeholder="# Steps" />
         <button id="genPathBtn">Generate Path</button>
         <button id="clearPathBtn">Clear Path</button>
@@ -125,9 +128,13 @@
   </div>
 </div>
 
-<!-- Leaflet + turf -->
+<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<!-- Leaflet-Geoman JS -->
+<script src="https://unpkg.com/@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.min.js"></script>
+<!-- Turf JS -->
 <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+<!-- Our Script -->
 <script src="script.js"></script>
 </body>
 </html>
