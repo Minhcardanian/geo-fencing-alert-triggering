@@ -1,61 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>IoT Geofencing Demo – Rect Cluster + Circle Zones</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>Freeform Cluster + Circle Zones (Always Show Click Points)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    /* Layout: left map, right side controls, log at bottom of right panel */
     html, body {
-      margin: 0; 
-      padding: 0; 
-      height: 100%; 
+      margin: 0;
+      padding: 0;
+      height: 100%;
       width: 100%;
       font-family: Arial, sans-serif;
     }
     #appContainer {
-      display: flex; 
-      flex-direction: row; 
-      width: 100%; 
+      display: flex;
+      flex-direction: row;
+      width: 100%;
       height: 100%;
     }
-    /* Left panel = map */
     #mapContainer {
-      flex: 1; 
-      position: relative; 
-      min-width: 400px;
+      flex: 1;
+      position: relative;
     }
     #map {
-      width: 100%; 
+      width: 100%;
       height: 100%;
     }
-    /* Right panel = controls + log */
     #rightPane {
-      width: 420px; 
-      min-width: 320px; 
-      display: flex; 
-      flex-direction: column; 
+      width: 420px;
+      min-width: 320px;
+      display: flex;
+      flex-direction: column;
       border-left: 1px solid #ccc;
-      overflow: hidden; /* just to ensure a clean border */
+      overflow: hidden;
     }
     #controls {
-      flex: 1; 
-      padding: 10px; 
-      background: #f7f7f7; 
+      flex: 1;
+      padding: 10px;
+      background: #f7f7f7;
       overflow-y: auto;
     }
     #log {
-      height: 200px; 
-      background: #eee; 
-      overflow-y: auto; 
-      padding: 10px; 
+      height: 200px;
+      background: #eee;
+      overflow-y: auto;
+      padding: 10px;
       border-top: 1px solid #ccc;
       font-size: 0.9em;
     }
-
-    /* Subsections for clarity */
     .section {
       background: #fafafa;
       margin-bottom: 1rem;
@@ -63,7 +57,7 @@
       border: 1px solid #ddd;
     }
     .section h3 {
-      margin: 0 0 0.5rem;
+      margin-top: 0;
       font-size: 1.1em;
       border-bottom: 1px solid #ccc;
       padding-bottom: 4px;
@@ -82,41 +76,40 @@
 </head>
 <body>
 <div id="appContainer">
-  <!-- 1) Map Container -->
+  <!-- Left: Map -->
   <div id="mapContainer">
     <div id="map"></div>
   </div>
 
-  <!-- 2) Right Pane: Controls + Log -->
+  <!-- Right: Controls & Log -->
   <div id="rightPane">
     <div id="controls">
-      <!-- Rectangular Cluster -->
+      <!-- 1) Freeform Cluster Polygon -->
       <div class="section">
-        <h3>1. Cluster Rectangle</h3>
-        <p>Click "Set Cluster", then click twice on the map: 1st corner & 2nd corner.</p>
+        <h3>1. Freeform Cluster Polygon</h3>
+        <p>Click "Set Cluster" to add multiple corners (3+). Then click "Finish Cluster" to close the polygon.</p>
         <button id="setClusterBtn">Set Cluster</button>
-        <p>Rectangle draws once 2 corners are chosen.</p>
+        <button id="finishClusterBtn">Finish Cluster</button>
       </div>
 
-      <!-- Zones: Circle inside cluster -->
+      <!-- 2) Add Circle Zones -->
       <div class="section">
         <h3>2. Add Circle Zones</h3>
-        <p>Enter radius, then click "Add Zone", then click inside cluster to set center.</p>
+        <p>Enter radius (m), then click "Add Zone". Then 1 map click = circle center. Up to 10 zones.</p>
         <input type="number" id="zoneRadiusInput" placeholder="Radius (m)" />
         <button id="addZoneBtn">Add Zone</button>
-        <p>Up to 10 zones. Each zone is a circle with random color.</p>
       </div>
 
-      <!-- A & B -->
+      <!-- 3) Points A & B -->
       <div class="section">
         <h3>3. Points A & B</h3>
-        <p>Click "Set A & B", then click 2 points inside cluster: 1st for A, 2nd for B.</p>
+        <p>Click "Set A & B", then pick 2 points inside polygon: 1st = A, 2nd = B.</p>
         <button id="setABBtn">Set A & B</button>
         <p>A: <span id="aCoords">[Not set]</span><br/>
            B: <span id="bCoords">[Not set]</span></p>
       </div>
 
-      <!-- Path & Simulation -->
+      <!-- 4) Path & Simulation -->
       <div class="section">
         <h3>4. Path & Simulation</h3>
         <p>Generate path from A→B in N steps.</p>
@@ -128,14 +121,12 @@
         <button id="stopBtn">Stop Simulation</button>
       </div>
     </div>
-    <div id="log"><strong>Log Panel:</strong><br/></div>
+    <div id="log"><strong>Log Panel:</strong><br /></div>
   </div>
 </div>
 
-<!-- Leaflet / Turf -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
-
 <script src="script.js"></script>
 </body>
 </html>
