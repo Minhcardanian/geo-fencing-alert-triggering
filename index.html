@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Freeform Cluster + Circle Zones (Leaflet-Geoman)</title>
+  <title>Freeform Cluster + Circle Zones & Multiple Vehicles (Leaflet-Geoman)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -86,36 +86,35 @@
   <!-- Right: Controls & Log -->
   <div id="rightPane">
     <div id="controls">
-      <!-- 1) Cluster Polygon -->
+      
+      <!-- 1. Cluster Polygon Section -->
       <div class="section">
         <h3>1. Cluster Polygon</h3>
         <p>Use the Geoman drawing tools (top-left) to draw and edit a polygon representing the cluster area.</p>
-        <p>When finished, the polygon is automatically saved for later checks.</p>
-        <!-- Optional: A button to clear the cluster -->
+        <p>When finished, the polygon is automatically saved.</p>
         <button id="clearClusterBtn">Clear Cluster</button>
       </div>
 
-      <!-- 2) Add Circle Zones -->
+      <!-- 2. Circle Zones Section -->
       <div class="section">
         <h3>2. Add Circle Zones</h3>
-        <p>Enter a radius (m), then click "Add Zone" and click inside the cluster to place a circular zone. (Up to 10 zones.)</p>
+        <p>Enter a radius (m), then click "Add Zone" and click inside the cluster to place a circular zone (up to 10 zones).</p>
         <input type="number" id="zoneRadiusInput" placeholder="Radius (m)" />
         <button id="addZoneBtn">Add Zone</button>
       </div>
 
-      <!-- 3) Points A & B -->
+      <!-- 3. Set Points A & B Section -->
       <div class="section">
         <h3>3. Points A & B</h3>
-        <p>Click "Set A & B", then pick 2 points inside the cluster: the first will be A (red) and the second B (blue).</p>
+        <p>Click "Set A & B" then click 2 points inside the cluster: first for A (red) and second for B (blue).</p>
         <button id="setABBtn">Set A & B</button>
-        <p>A: <span id="aCoords">[Not set]</span><br/>
-           B: <span id="bCoords">[Not set]</span></p>
+        <p>A: <span id="aCoords">[Not set]</span><br/>B: <span id="bCoords">[Not set]</span></p>
       </div>
 
-      <!-- 4) Path & Simulation -->
+      <!-- 4. Single Route & Simulation Section (for basic simulation) -->
       <div class="section">
         <h3>4. Path & Simulation</h3>
-        <p>Generate a path from A to B in N steps, then simulate the device moving along the path.</p>
+        <p>Generate a path from A→B in N steps and simulate the route.</p>
         <input type="number" id="numStepsInput" placeholder="# Steps" />
         <button id="genPathBtn">Generate Path</button>
         <button id="clearPathBtn">Clear Path</button>
@@ -123,6 +122,19 @@
         <button id="startBtn">Start Simulation</button>
         <button id="stopBtn">Stop Simulation</button>
       </div>
+      
+      <!-- 5. Multiple Vehicles & Routes Section -->
+      <div class="section">
+        <h3>5. Multiple Vehicles & Routes</h3>
+        <p>Add vehicles with multiple destinations. Use these controls to build and simulate routes per vehicle.</p>
+        <button id="addVehicleBtn">Add Vehicle</button>
+        <button id="setVehicleStartBtn">Set Vehicle Start</button>
+        <button id="addDestinationBtn">Add Destination</button>
+        <button id="genVehicleRouteBtn">Generate Vehicle Route</button>
+        <button id="clearVehicleRouteBtn">Clear Vehicle Route</button>
+        <p>Current Vehicle: <span id="currentVehicleDisplay">None</span></p>
+      </div>
+
     </div>
     <div id="log"><strong>Log Panel:</strong><br /></div>
   </div>
