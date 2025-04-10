@@ -6,35 +6,58 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
-    html, body { height: 100%; margin: 0; padding: 0; }
-    #map { height: 40vh; width: 100vw; }
+    /* Layout and responsiveness */
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    #map {
+      height: 40vh; 
+      width: 100vw;
+    }
 
-    /* Simple layout */
-    #controls, #zoneForm, #pathForm {
+    /* Containers for forms and controls */
+    .section {
       padding: 10px;
       background: #f7f7f7;
       border-top: 1px solid #ccc;
       display: flex;
       flex-wrap: wrap;
       gap: 1rem;
+      align-items: center;
     }
-    #zoneForm, #pathForm {
+
+    /* A sub-section for zone or path forms */
+    .sub-section {
       background: #eaeaea;
+      padding: 10px;
+      flex: 1 1 300px; /* Grows/shrinks nicely */
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
     }
+
+    /* Input and button styling */
     input[type="number"], input[type="text"] {
-      width: 6rem;
+      width: 7rem;
+      padding: 4px;
+      box-sizing: border-box;
     }
     button {
       cursor: pointer;
+      padding: 6px 12px;
     }
 
+    /* Log panel for output messages */
     #log {
-      height: 20vh;
-      width: 100vw;
-      overflow-y: auto;
-      padding: 10px;
-      background: #eee;
-      font-family: monospace;
+      height: 20vh; 
+      width: 100vw; 
+      overflow-y: auto; 
+      padding: 10px; 
+      background: #eee; 
+      font-family: monospace; 
       font-size: 0.9em;
     }
   </style>
@@ -43,35 +66,38 @@
   <!-- 1) Map Container -->
   <div id="map"></div>
 
-  <!-- 2) Zone Form -->
-  <div id="zoneForm">
-    <strong>Add/Customize Zones:</strong>
-    <input type="text" id="zoneName" placeholder="Zone Name" />
-    <input type="number" step="0.000001" id="zoneLat" placeholder="Lat" />
-    <input type="number" step="0.000001" id="zoneLon" placeholder="Lon" />
-    <input type="number" id="zoneRadius" placeholder="Radius(m)" />
-    <button id="addZoneBtn">Add Zone</button>
+  <!-- 2) Zone Form Section -->
+  <div class="section">
+    <div class="sub-section">
+      <strong>Add/Customize Zones:</strong>
+      <input type="text" id="zoneName" placeholder="Zone Name" />
+      <input type="number" step="0.000001" id="zoneLat" placeholder="Lat" />
+      <input type="number" step="0.000001" id="zoneLon" placeholder="Lon" />
+      <input type="number" id="zoneRadius" placeholder="Radius(m)" />
+      <button id="addZoneBtn">Add Zone</button>
+      <button id="pinZoneBtn">Pinpoint Zone</button>
+      <button id="randomZoneBtn">Random Zone</button>
+    </div>
+    <div class="sub-section">
+      <strong>Add Path Points:</strong>
+      <input type="number" step="0.000001" id="pathLat" placeholder="Lat" />
+      <input type="number" step="0.000001" id="pathLon" placeholder="Lon" />
+      <button id="addPathBtn">Add Point</button>
+      <button id="pinPathBtn">Pinpoint Path</button>
+      <button id="clearPathBtn">Clear Path</button>
+    </div>
   </div>
 
-  <!-- 3) Path Form -->
-  <div id="pathForm">
-    <strong>Add Path Points:</strong>
-    <input type="number" step="0.000001" id="pathLat" placeholder="Lat" />
-    <input type="number" step="0.000001" id="pathLon" placeholder="Lon" />
-    <button id="addPathBtn">Add Point</button>
-    <button id="clearPathBtn">Clear Path</button>
-  </div>
-
-  <!-- 4) Controls -->
-  <div id="controls">
+  <!-- 3) Simulation Controls -->
+  <div class="section" id="controls">
     <button id="startBtn">Start Simulation</button>
     <button id="stopBtn">Stop Simulation</button>
   </div>
 
-  <!-- 5) Log Panel -->
+  <!-- 4) Log Panel -->
   <div id="log"><strong>Log Panel:</strong><br></div>
 
-  <!-- 6) Script Dependencies -->
+  <!-- 5) Libraries & Script -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
   <script src="script.js"></script>
