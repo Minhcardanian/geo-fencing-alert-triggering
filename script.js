@@ -1,12 +1,12 @@
 /*************************************************
-  MAP SETUP & GLOBALS
+  MAP SETUP & GLOBAL VARIABLES
 **************************************************/
 const map = L.map('map').setView([10.762622, 106.660172], 16);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: 'Map data © OpenStreetMap contributors'
 }).addTo(map);
 
-// Geoman controls (draw polygon for cluster)
+// Initialize Geoman controls (for drawing the cluster polygon)
 map.pm.addControls({
   position: 'topleft',
   drawMarker: false,
@@ -20,20 +20,38 @@ map.pm.addControls({
   removalMode: false
 });
 
-// Global variables for cluster polygon
-let clusterPolygon = null; // Leaflet polygon
-let turfClusterPoly = null; // Turf polygon
+// Global variable for cluster polygon and its Turf conversion
+let clusterPolygon = null;   // Leaflet polygon
+let turfClusterPoly = null;  // Turf polygon
 
 // A global "clickMode" controlling what to do on map clicks
-let clickMode = "idle"; // Possible: "zone", "setAB", "setVehicleStart", "addDestination", etc.
+let clickMode = "idle"; // "zone", "setAB", "setVehicleStart", "addDestination"
+
+// Global array for circle zones
+let zoneCount = 0;
+const maxZones = 10;
+const zones = [];         // Array of { circle, turfPoly }
+let wasInsideZones = [];  // For single-route zone simulation check
+
+// Single-route (A→B) variables
+let pointA = null;
+let pointB = null;
+let markerA = null;
+let markerB = null;
+let path = [];
+let markerDevice = null;
+let pathIndex = 0;
+let simulationRunning = false;
+
+// MULTIPLE VEHICLES
+let vehicles = [];        // Global array to hold multiple vehicles
+let currentVehicle = null; // Current vehicle for editing
 
 /*************************************************
   DRAWING THE CLUSTER POLYGON (GEOMAN)
 **************************************************/
 map.on('pm:create', e => {
-  // If a polygon was just drawn
   if (e.layer && e.layer instanceof L.Polygon) {
-    // Remove old cluster if any
     if (clusterPolygon) {
       map.removeLayer(clusterPolygon);
     }
@@ -42,7 +60,6 @@ map.on('pm:create', e => {
     map.pm.disableDraw('Polygon');
 
     // Convert Leaflet polygon => Turf polygon
-    // Flatten coordinates if nested
     let latlngs = clusterPolygon.getLatLngs()[0];
     while (Array.isArray(latlngs[0])) {
       latlngs = latlngs[0];
@@ -70,11 +87,6 @@ document.getElementById("clearClusterBtn").addEventListener("click", () => {
 /*************************************************
   CIRCLE ZONES
 **************************************************/
-let zoneCount = 0;
-const maxZones = 10;
-const zones = [];         // array of { circle, turfPoly }
-let wasInsideZones = [];  // for zone simulation checks
-
 document.getElementById("addZoneBtn").addEventListener("click", () => {
   if (!turfClusterPoly) {
     logMessage("⚠️ Cluster polygon not set. Draw it first using Geoman.");
@@ -89,19 +101,13 @@ document.getElementById("addZoneBtn").addEventListener("click", () => {
     logMessage("⚠️ Invalid radius value.");
     return;
   }
-  // Next click sets zone center
   clickMode = "zone";
   logMessage(`Click inside cluster to place a circle zone (r = ${rVal}m).`);
 });
 
 /*************************************************
-  A & B POINTS (SINGLE ROUTE)
+  POINTS A & B (SINGLE ROUTE)
 **************************************************/
-let pointA = null;
-let pointB = null;
-let markerA = null;
-let markerB = null;
-
 document.getElementById("setABBtn").addEventListener("click", () => {
   if (!turfClusterPoly) {
     logMessage("⚠️ Cluster polygon not set. Draw it first.");
@@ -114,11 +120,6 @@ document.getElementById("setABBtn").addEventListener("click", () => {
 /*************************************************
   SINGLE ROUTE PATH & SIMULATION
 **************************************************/
-let path = [];
-let markerDevice = null;
-let pathIndex = 0;
-let simulationRunning = false;
-
 document.getElementById("genPathBtn").addEventListener("click", () => {
   if (!pointA || !pointB) {
     logMessage("⚠️ Points A and B are not set.");
@@ -127,19 +128,18 @@ document.getElementById("genPathBtn").addEventListener("click", () => {
   clearPath();
   let steps = parseInt(document.getElementById("numStepsInput").value, 10);
   if (Number.isNaN(steps) || steps < 2) steps = 10;
-
+  
   const [latA, lngA] = pointA;
   const [latB, lngB] = pointB;
-
-  // We'll do a simple interpolation
+  
   const latDiff = (latB - latA) / (steps - 1);
   const lngDiff = (lngB - lngA) / (steps - 1);
-
+  
   path = [];
   for (let i = 0; i < steps; i++) {
     path.push([latA + latDiff * i, lngA + lngDiff * i]);
   }
-
+  
   logMessage(`🔄 Generated path with ${steps} steps (size: ${path.length}).`);
   if (!markerDevice && path.length > 0) {
     markerDevice = L.marker(path[0], { icon: carEmojiIcon() }).addTo(map);
@@ -170,14 +170,14 @@ document.getElementById("startBtn").addEventListener("click", () => {
   }
   simulationRunning = true;
   pathIndex = 0;
-
+  
   if (!markerDevice && path.length > 0) {
     markerDevice = L.marker(path[0], { icon: carEmojiIcon() }).addTo(map);
   } else if (markerDevice) {
     markerDevice.setLatLng(path[0]);
   }
-
-  // Reset zone states
+  
+  // Reset zone states for single-route checks
   for (let i = 0; i < wasInsideZones.length; i++) {
     wasInsideZones[i] = false;
   }
@@ -203,8 +203,7 @@ function moveDevice() {
   }
   const [lat, lng] = path[pathIndex++];
   markerDevice.setLatLng([lat, lng]);
-
-  // Zone checks for single-route simulation
+  // Check circle zones for single-route device
   zones.forEach((z, idx) => {
     const pt = turf.point([lng, lat]);
     const isInside = turf.booleanPointInPolygon(pt, z.turfPoly);
@@ -216,50 +215,43 @@ function moveDevice() {
     }
     wasInsideZones[idx] = isInside;
   });
-
   setTimeout(moveDevice, 1200);
 }
 
 /*************************************************
-  MAP CLICK LOGIC
+  MAP CLICK LOGIC (Global)
 **************************************************/
+// Always place a small grey marker for user feedback
 map.on("click", e => {
   const { lat, lng } = e.latlng;
+  L.circleMarker([lat, lng], { radius: 3, color: "grey", opacity: 0.7 }).addTo(map);
 
-  // Always place a small grey circle marker for user feedback
-  L.circleMarker([lat, lng], { radius: 3, color: 'grey', opacity: 0.7 }).addTo(map);
-
-  // 1) Add Zone
+  // 1) Add circle zone
   if (clickMode === "zone") {
     if (!insideCluster(lat, lng)) {
       logMessage("🛑 Click is outside the cluster polygon. Try again.");
       return;
     }
     const rVal = parseFloat(document.getElementById("zoneRadiusInput").value);
-    const color = randomColor();
-    const circle = L.circle([lat, lng], { radius: rVal, color }).addTo(map);
-
+    const zoneColor = randomColor();
+    const circle = L.circle([lat, lng], { radius: rVal, color: zoneColor }).addTo(map);
     zoneCount++;
-    logMessage(`➕ Zone${zoneCount} center=[${lat.toFixed(5)}, ${lng.toFixed(5)}], r=${rVal}m`);
-
-    // Convert circle => turf circle for checks
-    const turfPoly = turf.circle([lng, lat], rVal / 1000, {
-      steps: 64,
-      units: 'kilometers'
-    });
+    logMessage(`➕ Zone${zoneCount} created at [${lat.toFixed(5)}, ${lng.toFixed(5)}], r=${rVal}m`);
+    
+    // Convert circle => turf circle
+    const turfPoly = turf.circle([lng, lat], rVal / 1000, { steps: 64, units: "kilometers" });
     zones.push({ circle, turfPoly });
     wasInsideZones.push(false);
-
+    
     clickMode = "idle";
   }
-
   // 2) Set A & B
   else if (clickMode === "setAB") {
     if (!insideCluster(lat, lng)) {
       logMessage("🛑 Must click inside cluster polygon.");
       return;
     }
-    // If pointA not set, this click is for A
+    // If pointA isn't set yet
     if (!pointA) {
       pointA = [lat, lng];
       if (markerA) map.removeLayer(markerA);
@@ -271,45 +263,9 @@ map.on("click", e => {
       pointB = [lat, lng];
       if (markerB) map.removeLayer(markerB);
       markerB = L.marker(pointB, { icon: blueIcon() }).addTo(map);
-      logMessage(`Point B set at [${lat.toFixed(5)}, ${lng.toFixed(5)}].`);
+      logMessage(`Point B set at [${lat.toFixed(5)}, ${lng.toFixed(5())}].`);
       clickMode = "idle";
     }
-  }
-
-  // 3) Multiple Vehicle Editing
-  else if (clickMode === "setVehicleStart") {
-    if (!currentVehicle) {
-      logMessage("⚠️ No vehicle selected. Press 'Add Vehicle' first.");
-      return;
-    }
-    if (!insideCluster(lat, lng)) {
-      logMessage("🛑 Click is outside the cluster polygon. Try again.");
-      return;
-    }
-    currentVehicle.start = [lat, lng];
-    // Place or update vehicle marker (using carEmojiIcon)
-    if (currentVehicle.marker) {
-      currentVehicle.marker.setLatLng([lat, lng]);
-    } else {
-      currentVehicle.marker = L.marker([lat, lng], { icon: carEmojiIcon() }).addTo(map);
-    }
-    logMessage(`${currentVehicle.id} start set at [${lat.toFixed(5)}, ${lng.toFixed(5)}].`);
-    clickMode = "idle";
-  }
-
-  else if (clickMode === "addDestination") {
-    if (!currentVehicle) {
-      logMessage("⚠️ No vehicle selected. Press 'Add Vehicle' first.");
-      return;
-    }
-    if (!insideCluster(lat, lng)) {
-      logMessage("🛑 Click is outside the cluster polygon. Try again.");
-      return;
-    }
-    currentVehicle.destinations.push([lat, lng]);
-    L.circleMarker([lat, lng], { radius: 4, color: 'blue' }).addTo(map);
-    logMessage(`Destination added for ${currentVehicle.id} at [${lat.toFixed(5)}, ${lng.toFixed(5)}].`);
-    clickMode = "idle";
   }
 });
 
@@ -323,12 +279,12 @@ function insideCluster(lat, lng) {
 }
 
 /*************************************************
-  LOGGING
+  LOGGING FUNCTION
 **************************************************/
 function logMessage(msg) {
   const logPanel = document.getElementById("log");
   if (!logPanel) {
-    console.warn("No element with ID='log' found in HTML. Logging to console instead:", msg);
+    console.warn("No element with ID='log' found. Logging to console:", msg);
     return;
   }
   const now = new Date().toLocaleTimeString();
@@ -387,22 +343,21 @@ function randomColor() {
 }
 
 /*************************************************
-  MULTIPLE VEHICLES
+  MULTIPLE VEHICLES & ROUTES
 **************************************************/
-// Global array to hold multiple vehicles
-let vehicles = [];
-// Track the current vehicle for editing
-let currentVehicle = null;
-
-// UI references
+// Re-declare the references for multiple vehicles UI:
 const addVehicleBtn = document.getElementById("addVehicleBtn");
 const setVehicleStartBtn = document.getElementById("setVehicleStartBtn");
 const addDestinationBtn = document.getElementById("addDestinationBtn");
 const genVehicleRouteBtn = document.getElementById("genVehicleRouteBtn");
 const clearVehicleRouteBtn = document.getElementById("clearVehicleRouteBtn");
 const currentVehicleDisplay = document.getElementById("currentVehicleDisplay");
+const destinationsList = document.createElement("ul"); // We'll attach it in the UI if you want
 
-// 1) Add a new vehicle
+// If you have an existing <ul id="destinationsList"> in your HTML, use that
+const realDestinationsList = document.getElementById("destinationsList");
+
+// Add new vehicle
 addVehicleBtn.addEventListener("click", () => {
   const newVehicle = {
     id: `Vehicle${vehicles.length + 1}`,
@@ -416,52 +371,48 @@ addVehicleBtn.addEventListener("click", () => {
   vehicles.push(newVehicle);
   currentVehicle = newVehicle;
   currentVehicleDisplay.textContent = newVehicle.id;
+  realDestinationsList.innerHTML = "";
   logMessage(`New vehicle ${newVehicle.id} added. Set start and add destinations.`);
 });
 
-// 2) Set vehicle start
 setVehicleStartBtn.addEventListener("click", () => {
   if (!currentVehicle) {
-    logMessage("⚠️ No vehicle selected. Press 'Add Vehicle' first.");
+    logMessage("⚠️ No vehicle selected. Click 'Add Vehicle' first.");
     return;
   }
   if (!turfClusterPoly) {
-    logMessage("⚠️ Cluster polygon not set. Draw it first.");
+    logMessage("⚠️ Cluster polygon not set.");
     return;
   }
   clickMode = "setVehicleStart";
-  logMessage(`Click inside cluster to set start point for ${currentVehicle.id}.`);
+  logMessage(`Click inside the cluster to set start point for ${currentVehicle.id}.`);
 });
 
-// 3) Add destination
 addDestinationBtn.addEventListener("click", () => {
   if (!currentVehicle) {
-    logMessage("⚠️ No vehicle selected. Press 'Add Vehicle' first.");
+    logMessage("⚠️ No vehicle selected. Click 'Add Vehicle' first.");
     return;
   }
   if (!turfClusterPoly) {
-    logMessage("⚠️ Cluster polygon not set. Draw it first.");
+    logMessage("⚠️ Cluster polygon not set.");
     return;
   }
   clickMode = "addDestination";
   logMessage(`Click inside cluster to add a destination for ${currentVehicle.id}.`);
 });
 
-// 4) Generate route for current vehicle
 genVehicleRouteBtn.addEventListener("click", () => {
   if (!currentVehicle || !currentVehicle.start || currentVehicle.destinations.length === 0) {
     logMessage("⚠️ Current vehicle does not have start or destinations set.");
     return;
   }
-  // Clear any previous route
   currentVehicle.path = [];
   currentVehicle.currentIndex = 0;
-
+  
   const pts = [currentVehicle.start, ...currentVehicle.destinations];
   const defaultSteps = 10;
   let totalPath = [];
-
-  // Interpolate between consecutive points
+  
   for (let i = 0; i < pts.length - 1; i++) {
     const [latA, lngA] = pts[i];
     const [latB, lngB] = pts[i + 1];
@@ -475,46 +426,70 @@ genVehicleRouteBtn.addEventListener("click", () => {
   logMessage(`${currentVehicle.id} route generated with ${currentVehicle.path.length} points.`);
 });
 
-// 5) Clear vehicle route & destinations
 clearVehicleRouteBtn.addEventListener("click", () => {
-  if (!currentVehicle) {
+  if (currentVehicle) {
+    currentVehicle.destinations = [];
+    currentVehicle.path = [];
+    currentVehicle.currentIndex = 0;
+    realDestinationsList.innerHTML = "";
+    logMessage(`${currentVehicle.id}'s route and destinations cleared.`);
+  } else {
     logMessage("No vehicle selected.");
-    return;
   }
-  currentVehicle.destinations = [];
-  currentVehicle.path = [];
-  currentVehicle.currentIndex = 0;
-  logMessage(`${currentVehicle.id}'s route and destinations cleared.`);
 });
 
-// Simulation of multiple vehicles
-function simulateVehicles() {
-  vehicles.forEach(vehicle => {
-    if (vehicle.path.length > 0 && vehicle.currentIndex < vehicle.path.length) {
-      const [lat, lng] = vehicle.path[vehicle.currentIndex];
-      // If the vehicle has a marker, move it
-      if (vehicle.marker) {
-        vehicle.marker.setLatLng([lat, lng]);
-      }
-      vehicle.currentIndex++;
-      // Optionally do zone checks or multi-vehicle interactions here
+// Initialize Sortable for reordering
+new Sortable(realDestinationsList, {
+  animation: 150,
+  onEnd: function(evt) {
+    if (currentVehicle) {
+      const lis = realDestinationsList.querySelectorAll("li");
+      const newDests = [];
+      lis.forEach(li => {
+        const lat = parseFloat(li.getAttribute("data-lat"));
+        const lng = parseFloat(li.getAttribute("data-lng"));
+        newDests.push([lat, lng]);
+      });
+      currentVehicle.destinations = newDests;
+      logMessage(`${currentVehicle.id} destinations reordered.`);
     }
-  });
-
-  // See if at least one vehicle is still moving
-  if (vehicles.some(v => v.currentIndex < v.path.length && v.path.length > 0)) {
-    setTimeout(simulateVehicles, 1200);
-  } else {
-    logMessage("All vehicles have reached the end of their routes.");
   }
-}
+});
 
-// If you want a dedicated button for starting multi-vehicles simulation, you can add one or start from console
-function startVehiclesSimulation() {
-  if (vehicles.length === 0) {
-    logMessage("No vehicles to simulate.");
-    return;
+map.on("click", e => {
+  const { lat, lng } = e.latlng;
+  L.circleMarker([lat, lng], { radius: 3, color: "grey", opacity: 0.7 }).addTo(map);
+
+  if (clickMode === "setVehicleStart") {
+    if (!insideCluster(lat, lng)) {
+      logMessage("🛑 Click is outside the cluster. Try again.");
+      return;
+    }
+    currentVehicle.start = [lat, lng];
+    if (currentVehicle.marker) {
+      currentVehicle.marker.setLatLng([lat, lng]);
+    } else {
+      currentVehicle.marker = L.marker([lat, lng], { icon: carEmojiIcon() }).addTo(map);
+    }
+    logMessage(`${currentVehicle.id} start set at [${lat.toFixed(5)}, ${lng.toFixed(5)}].`);
+    clickMode = "idle";
   }
-  logMessage("Multiple vehicles simulation started.");
-  simulateVehicles();
-}
+  else if (clickMode === "addDestination") {
+    if (!insideCluster(lat, lng)) {
+      logMessage("🛑 Click is outside the cluster. Try again.");
+      return;
+    }
+    currentVehicle.destinations.push([lat, lng]);
+    L.circleMarker([lat, lng], { radius: 4, color: "blue" }).addTo(map);
+
+    // Add to list
+    const li = document.createElement("li");
+    li.textContent = `(${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+    li.setAttribute("data-lat", lat);
+    li.setAttribute("data-lng", lng);
+    realDestinationsList.appendChild(li);
+
+    logMessage(`Destination added for ${currentVehicle.id} at [${lat.toFixed(5)}, ${lng.toFixed(5)}].`);
+    clickMode = "idle";
+  }
+});
