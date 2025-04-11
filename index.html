@@ -43,19 +43,19 @@
     #controls {
       flex: 1;
       padding: 10px;
-      background: #f7f7f7;
+      background: rgba(247, 247, 247, 0.8); /* semi-transparent background */
       overflow-y: auto;
     }
     #log {
       height: 200px;
-      background: #eee;
+      background: rgba(238, 238, 238, 0.8); /* semi-transparent */
       overflow-y: auto;
       padding: 10px;
       border-top: 1px solid #ccc;
       font-size: 0.9em;
     }
     .section {
-      background: rgba(250, 250, 250, 0.8);
+      background: rgba(250, 250, 250, 0.8); /* semi-transparent */
       margin-bottom: 1rem;
       padding: 10px;
       border: 1px solid #ddd;
@@ -102,11 +102,9 @@
   <div id="mapContainer">
     <div id="map"></div>
   </div>
-
   <!-- Right: Controls & Log -->
   <div id="rightPane">
     <div id="controls">
-      
       <!-- 1. Cluster Polygon Section -->
       <div class="section">
         <h3>1. Cluster Polygon</h3>
@@ -156,20 +154,15 @@
         <p>Destinations (drag to reorder):</p>
         <ul id="destinationsList"></ul>
       </div>
-
     </div>
     <div id="log"><strong>Log Panel:</strong><br /></div>
   </div>
 </div>
 
 <!-- Scripts -->
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<!-- Leaflet-Geoman JS -->
 <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.min.js"></script>
-<!-- Turf JS -->
 <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
-<!-- Our Script -->
 <script src="script.js"></script>
 </body>
 </html>
