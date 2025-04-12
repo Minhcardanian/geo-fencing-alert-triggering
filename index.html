@@ -10,6 +10,22 @@
   <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css" />
   <!-- SortableJS for drag-and-drop reordering -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+  <!-- Import Map for Dependencies -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@meshsdk/hydra": "https://unpkg.com/@meshsdk/hydra@1.9.0-beta.32/dist/index.js",
+      "@meshsdk/core-cst": "https://unpkg.com/@meshsdk/core-cst@1.9.0-beta.32/dist/index.js",
+      "@meshsdk/common": "https://unpkg.com/@meshsdk/common@1.9.0-beta.32/dist/index.js",
+      "axios": "https://unpkg.com/axios/dist/axios.min.js",
+      "@cardano-sdk/core": "https://unpkg.com/@cardano-sdk/core/dist/index.js",
+      "@cardano-sdk/crypto": "https://esm.sh/@cardano-sdk/crypto@0.2.3",
+      "@cardano-sdk/util": "https://esm.sh/@cardano-sdk/util"
+    }
+  }
+  </script>
+
   <style>
     html, body {
       margin: 0;
@@ -43,19 +59,19 @@
     #controls {
       flex: 1;
       padding: 10px;
-      background: rgba(247, 247, 247, 0.8); /* semi-transparent background */
+      background: rgba(247, 247, 247, 0.8);
       overflow-y: auto;
     }
     #log {
       height: 200px;
-      background: rgba(238, 238, 238, 0.8); /* semi-transparent */
+      background: rgba(238, 238, 238, 0.8);
       overflow-y: auto;
       padding: 10px;
       border-top: 1px solid #ccc;
       font-size: 0.9em;
     }
     .section {
-      background: rgba(250, 250, 250, 0.8); /* semi-transparent */
+      background: rgba(250, 250, 250, 0.8);
       margin-bottom: 1rem;
       padding: 10px;
       border: 1px solid #ddd;
@@ -163,6 +179,6 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.min.js"></script>
 <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
-<script src="script.js"></script>
+<script type="module" src="script.js"></script>
 </body>
 </html>

@@ -1,3 +1,37 @@
+// =================== HYDRA PROVIDER INTEGRATION ===================
+import { HydraProvider } from "@meshsdk/hydra";
+
+// Replace with your actual Hydra Head URL and port
+const HYDRA_URL = "http://123.45.67.890:4001";
+const hydraProvider = new HydraProvider(HYDRA_URL);
+
+// Immediately connect and initialize the Hydra Head
+(async () => {
+  try {
+    await hydraProvider.connect();
+    await hydraProvider.init();
+    console.log("Hydra Head connected and initialized.");
+  } catch (error) {
+    console.error("Hydra initialization error:", error);
+  }
+})();
+
+// This function submits a dummy transaction via Hydra to simulate a location update.
+// In production, build a valid CBOR transaction according to your requirements.
+async function sendLocationUpdate(lat, lng) {
+  try {
+    const dummyCbor = "00"; // Dummy CBOR hex value, replace with a valid transaction in real usage.
+    const description = `Location update for DemoVehicle1 at [${lat}, ${lng}]`;
+    const result = await hydraProvider.newTx(dummyCbor, "Unwitnessed Tx ConwayEra", description);
+    console.log("Location update submitted via Hydra:", result);
+  } catch (error) {
+    console.error("Error submitting transaction via Hydra:", error);
+  }
+}
+// =================== END HYDRA PROVIDER INTEGRATION ===================
+
+
+// =================== MAP SETUP & GEOSPATIAL CODE ===================
 /*************************************************
   MAP SETUP & GLOBAL VARIABLES
 **************************************************/
@@ -166,6 +200,7 @@ document.getElementById("startBtn").addEventListener("click", () => {
   } else if (markerDevice) {
     markerDevice.setLatLng(path[0]);
   }
+  // Reset zone check status
   for (let i = 0; i < wasInsideZones.length; i++) {
     wasInsideZones[i] = false;
   }
@@ -191,7 +226,12 @@ function moveDevice() {
   }
   const [lat, lng] = path[pathIndex++];
   markerDevice.setLatLng([lat, lng]);
-  
+
+  // --- HYDRA: Submit location update via Hydra Provider ---
+  // Instead of sending a REST request, we use our Hydra integration.
+  sendLocationUpdate(lat, lng);
+  // --- END HYDRA SECTION ---
+
   // Check zones for single-route simulation
   zones.forEach((z, idx) => {
     const pt = turf.point([lng, lat]);
@@ -246,7 +286,6 @@ map.on("click", e => {
     } else if (!pointB) {
       pointB = [lat, lng];
       if (markerB) map.removeLayer(markerB);
-      // FIX: Remove extra parentheses from toFixed call here:
       markerB = L.marker(pointB, { icon: blueIcon() }).addTo(map);
       logMessage(`Point B set at [${lat.toFixed(5)}, ${lng.toFixed(5)}].`);
       clickMode = "idle";
@@ -255,7 +294,7 @@ map.on("click", e => {
 });
 
 /*************************************************
-  HELPER: insideCluster
+  HELPER: Check if point is inside cluster polygon
 **************************************************/
 function insideCluster(lat, lng) {
   if (!turfClusterPoly) return false;
@@ -480,78 +519,3 @@ map.on("click", e => {
     clickMode = "idle";
   }
 });
-
-/*************************************************
-  HELPER: Check if point is inside cluster polygon
-**************************************************/
-function insideCluster(lat, lng) {
-  if (!turfClusterPoly) return false;
-  const pt = turf.point([lng, lat]);
-  return turf.booleanPointInPolygon(pt, turfClusterPoly);
-}
-
-/*************************************************
-  LOGGING FUNCTION
-**************************************************/
-function logMessage(msg) {
-  const logPanel = document.getElementById("log");
-  if (!logPanel) {
-    console.warn("No element with ID='log' found. Logging to console:", msg);
-    return;
-  }
-  const now = new Date().toLocaleTimeString();
-  logPanel.innerHTML += `[${now}] ${msg}<br/>`;
-  logPanel.scrollTop = logPanel.scrollHeight;
-}
-
-/*************************************************
-  ICONS
-**************************************************/
-function redIcon() {
-  return L.icon({
-    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-  });
-}
-
-function blueIcon() {
-  return L.icon({
-    iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
-    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-  });
-}
-
-function carEmojiIcon() {
-  const svgContent = encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40">
-      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="24">🚗</text>
-    </svg>
-  `);
-  const dataUrl = `data:image/svg+xml,${svgContent}`;
-  return L.icon({
-    iconUrl: dataUrl,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
-    popupAnchor: [0, -20]
-  });
-}
-
-/*************************************************
-  MISC. UTILS
-**************************************************/
-function randomColor() {
-  const letters = "0123456789ABCDEF";
-  let color = "#";
-  for (let i = 0; i < 6; i++) {
-    color += letters[Math.floor(Math.random() * 16)];
-  }
-  return color;
-}
