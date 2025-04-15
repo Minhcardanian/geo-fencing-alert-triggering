@@ -6,8 +6,7 @@
 export let map;
 export let clusterPolygon = null;   // Leaflet polygon for the cluster
 export let turfClusterPoly = null;    // Turf.js polygon version of the cluster
-export let clickMode = "idle";        // Controls behavior for subsequent map clicks 
-                                    // ("zone", "setAB", "setVehicleStart", "addDestination", etc.)
+export let clickMode = "idle";        // ("zone", "setAB", "setVehicleStart", "addDestination", etc.)
 
 // Variables for simulation and route handling (exported)
 export let pointA = null;
@@ -23,7 +22,9 @@ export let wasInsideZones = [];  // For simulation zone checks
 export let zoneCount = 0;
 export const maxZones = 10;
 
-// Initialization function to set up the map and attach event listeners.
+/*************************************************
+  Initialization Function: initMap
+**************************************************/
 export function initMap() {
   // Initialize the map
   map = L.map('map').setView([10.762622, 106.660172], 16);
@@ -55,13 +56,16 @@ export function initMap() {
       // Disable further polygon drawing
       map.pm.disableDraw('Polygon');
   
-      // Convert drawn polygon to Turf polygon
+      // Convert drawn polygon to Turf.js polygon
       let latlngs = clusterPolygon.getLatLngs()[0];
       while (Array.isArray(latlngs[0])) { latlngs = latlngs[0]; }
       const coords = latlngs.map(pt => [pt.lng, pt.lat]);
       // Close the polygon by pushing the first coordinate to the end
       coords.push([coords[0][0], coords[0][1]]);
       turfClusterPoly = turf.polygon([coords]);
+      
+      // Also assign to global for geo-fencing (if needed)
+      window.turfClusterPoly = turfClusterPoly;
   
       logMessage("Cluster polygon drawn and saved.");
     }
@@ -202,7 +206,7 @@ export function initMap() {
       zoneCount++;
       logMessage(`➕ Zone${zoneCount} created at [${lat.toFixed(5)}, ${lng.toFixed(5)}] with radius ${rVal}m.`);
       const turfPoly = turf.circle([lng, lat], rVal / 1000, { steps: 64, units: "kilometers" });
-      zones.push({ circle: null, turfPoly });  // Note: storing only Turf polygon here (circle layer was already added)
+      zones.push({ circle: null, turfPoly });  // storing Turf polygon (the circle layer is already added)
       wasInsideZones.push(false);
       clickMode = "idle";
     }

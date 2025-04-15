@@ -31,7 +31,7 @@
              When finished, the polygon is automatically saved.</p>
           <button id="clearClusterBtn" class="btn">Clear Cluster</button>
         </div>
-
+  
         <!-- 2. Circle Zones Section -->
         <div class="section">
           <h3>2. Add Circle Zones</h3>
@@ -39,7 +39,7 @@
           <input type="number" id="zoneRadiusInput" placeholder="Radius (m)" />
           <button id="addZoneBtn" class="btn">Add Zone</button>
         </div>
-
+  
         <!-- 3. Set Points A & B Section -->
         <div class="section">
           <h3>3. Points A & B</h3>
@@ -47,7 +47,7 @@
           <button id="setABBtn" class="btn">Set A & B</button>
           <p>A: <span id="aCoords">[Not set]</span><br/>B: <span id="bCoords">[Not set]</span></p>
         </div>
-
+  
         <!-- 4. Single Route & Simulation Section -->
         <div class="section">
           <h3>4. Path & Simulation</h3>
@@ -77,12 +77,13 @@
       <div id="log"><strong>Log Panel:</strong><br /></div>
     </div>
   </div>
-
-  <!-- External Scripts -->
+  
+  <!-- External Libraries -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.min.js"></script>
   <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
-  <!-- Your custom JavaScript logic is contained in script.js -->
-  <script src="script.js"></script>
+  
+  <!-- Main Application Entry Point (ES Module) -->
+  <script type="module" src="js/App.js"></script>
 </body>
 </html>
