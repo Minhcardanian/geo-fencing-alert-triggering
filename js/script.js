@@ -2,11 +2,15 @@
   MAP SETUP & GLOBAL VARIABLES
 **************************************************/
 
+// Import the insideCluster function from geoFencing.js so it is defined for this module
+import { insideCluster } from './geoFencing.js';
+
 // Module-level variables (exported so that other modules can use them)
 export let map;
 export let clusterPolygon = null;   // Leaflet polygon for the cluster
 export let turfClusterPoly = null;    // Turf.js polygon version of the cluster
-export let clickMode = "idle";        // ("zone", "setAB", "setVehicleStart", "addDestination", etc.)
+export let clickMode = "idle";        // Controls behavior for subsequent map clicks 
+                                    // ("zone", "setAB", "setVehicleStart", "addDestination", etc.)
 
 // Variables for simulation and route handling (exported)
 export let pointA = null;
@@ -230,18 +234,6 @@ export function initMap() {
       }
     }
   });
-}
-
-/*************************************************
-  HELPER: insideCluster
-**************************************************/
-// If not already provided by geoFencing.js, define insideCluster conditionally.
-if (typeof insideCluster !== 'function') {
-  function insideCluster(lat, lng) {
-    if (!turfClusterPoly) return false;
-    const pt = turf.point([lng, lat]);
-    return turf.booleanPointInPolygon(pt, turfClusterPoly);
-  }
 }
 
 /*************************************************
