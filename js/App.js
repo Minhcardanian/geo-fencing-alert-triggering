@@ -3,7 +3,6 @@
 
 // Import the necessary modules from the js folder
 import { initMap } from './script.js';         // Map setup and global event hookups
-import { setupSimulation } from './simulation.js'; // Simulation functions and event listeners
 import { setupGeoFencing } from './geoFencing.js';   // Geo-fencing helper(s) and related setup
 import * as utils from './utils.js';               // Utility functions
 

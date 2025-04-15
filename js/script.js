@@ -17,7 +17,6 @@ export let pointA = null;
 export let pointB = null;
 export let markerA = null;
 export let markerB = null;
-export let markerDevice = null;
 export let path = [];
 export let zones = [];         // Array of zone objects: { circle, turfPoly }
 export let wasInsideZones = [];  // For simulation zone checks
@@ -26,11 +25,12 @@ export const maxZones = 10;
 
 /*************************************************
   Mutable Simulation State
-  (Group simulationRunning and pathIndex so that we can update these properties without reassigning the object)
+  (Group simulationRunning, pathIndex, and markerDevice together)
 **************************************************/
 export const simulationState = {
   simulationRunning: false,
-  pathIndex: 0
+  pathIndex: 0,
+  markerDevice: null
 };
 
 /*************************************************
@@ -154,10 +154,13 @@ export function initMap() {
     }
     
     logMessage(`🔄 Generated path with ${steps} steps (size: ${path.length}).`);
-    if (!markerDevice && path.length > 0) {
-      markerDevice = L.marker(path[0], { icon: carEmojiIcon() }).addTo(map);
-    } else if (markerDevice) {
-      markerDevice.setLatLng(path[0]);
+    // Remove any existing marker to prevent leftover markers
+    if (simulationState.markerDevice) {
+      map.removeLayer(simulationState.markerDevice);
+      simulationState.markerDevice = null;
+    }
+    if (path.length > 0) {
+      simulationState.markerDevice = L.marker(path[0], { icon: carEmojiIcon() }).addTo(map);
     }
   });
   
@@ -176,11 +179,12 @@ export function initMap() {
     }
     simulationState.simulationRunning = true;
     simulationState.pathIndex = 0;
-    if (!markerDevice && path.length > 0) {
-      markerDevice = L.marker(path[0], { icon: carEmojiIcon() }).addTo(map);
-    } else if (markerDevice) {
-      markerDevice.setLatLng(path[0]);
+    // Remove any leftover marker
+    if (simulationState.markerDevice) {
+      map.removeLayer(simulationState.markerDevice);
+      simulationState.markerDevice = null;
     }
+    simulationState.markerDevice = L.marker(path[0], { icon: carEmojiIcon() }).addTo(map);
     // Reset zone flags
     for (let i = 0; i < wasInsideZones.length; i++) {
       wasInsideZones[i] = false;
@@ -251,9 +255,9 @@ export function initMap() {
 function clearPath() {
   path = [];
   simulationState.pathIndex = 0;
-  if (markerDevice) {
-    map.removeLayer(markerDevice);
-    markerDevice = null;
+  if (simulationState.markerDevice) {
+    map.removeLayer(simulationState.markerDevice);
+    simulationState.markerDevice = null;
   }
   logMessage("🧹 Path cleared.");
 }
@@ -269,7 +273,7 @@ function moveDevice() {
     return;
   }
   const [lat, lng] = path[simulationState.pathIndex++];
-  markerDevice.setLatLng([lat, lng]);
+  simulationState.markerDevice.setLatLng([lat, lng]);
   
   // Check each zone for entry/exit events
   zones.forEach((z, idx) => {
@@ -346,4 +350,3 @@ function randomColor() {
   }
   return color;
 }
-
