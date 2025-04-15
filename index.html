@@ -8,21 +8,43 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <!-- Leaflet-Geoman CSS -->
   <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
   <!-- SortableJS for drag-and-drop reordering -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <style>
+    /* Define reusable CSS variables */
+    :root {
+      --background-light: #fafafa;
+      --background-panel: rgba(250, 250, 250, 0.95);
+      --border-color: #ccc;
+      --card-border-color: #ddd;
+      --primary-color: #007bff;
+      --primary-color-hover: #0056b3;
+      --text-color: #333;
+      --font-base: 'Roboto', sans-serif;
+      --border-radius: 4px;
+      --box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Global resets and typography */
     html, body {
       margin: 0;
       padding: 0;
-      height: 100%;
       width: 100%;
-      font-family: Arial, sans-serif;
+      height: 100%;
+      font-family: var(--font-base);
+      font-size: 16px;
+      color: var(--text-color);
+      background: var(--background-light);
+      line-height: 1.5;
     }
+
+    /* Layout containers */
     #appContainer {
       display: flex;
-      flex-direction: row;
-      width: 100%;
       height: 100%;
+      width: 100%;
     }
     #mapContainer {
       flex: 1;
@@ -37,132 +59,177 @@
       min-width: 320px;
       display: flex;
       flex-direction: column;
-      border-left: 1px solid #ccc;
+      border-left: 1px solid var(--border-color);
       overflow: hidden;
+      background: var(--background-panel);
     }
     #controls {
       flex: 1;
-      padding: 10px;
-      background: rgba(247, 247, 247, 0.8); /* semi-transparent background */
+      padding: 15px;
       overflow-y: auto;
     }
     #log {
       height: 200px;
-      background: rgba(238, 238, 238, 0.8); /* semi-transparent */
-      overflow-y: auto;
       padding: 10px;
-      border-top: 1px solid #ccc;
       font-size: 0.9em;
+      background: var(--background-panel);
+      border-top: 1px solid var(--border-color);
+      overflow-y: auto;
+      font-family: "Courier New", Courier, monospace;
     }
+
+    /* Section and card styling */
     .section {
-      background: rgba(250, 250, 250, 0.8); /* semi-transparent */
+      background: var(--background-panel);
       margin-bottom: 1rem;
-      padding: 10px;
-      border: 1px solid #ddd;
+      padding: 15px;
+      border: 1px solid var(--card-border-color);
+      border-radius: var(--border-radius);
+      box-shadow: var(--box-shadow);
     }
     .section h3 {
       margin-top: 0;
-      font-size: 1.1em;
-      border-bottom: 1px solid #ccc;
-      padding-bottom: 4px;
+      margin-bottom: 0.75em;
+      font-size: 1.2em;
+      color: var(--text-color);
     }
-    .section button {
-      margin-right: 4px;
-      padding: 5px 8px;
+    .section p {
+      margin-bottom: 1em;
+    }
+
+    /* Button styles */
+    .btn {
+      display: inline-block;
+      padding: 6px 12px;
+      margin: 0 4px 4px 0;
+      background-color: var(--primary-color);
+      color: #fff;
+      border: none;
+      border-radius: var(--border-radius);
       cursor: pointer;
+      transition: background-color 0.2s ease;
+      font-size: 0.9em;
     }
+    .btn:hover {
+      background-color: var(--primary-color-hover);
+    }
+    .btn:active {
+      background-color: #004494;
+    }
+
+    /* Input styling for number fields */
     .section input[type="number"] {
       width: 5rem;
+      padding: 4px;
       margin-right: 4px;
-      padding: 3px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
     }
+
     /* Destinations list styling */
     #destinationsList {
       list-style: none;
       padding-left: 0;
-      background: rgba(255, 255, 255, 0.8);
-      border: 1px solid #ccc;
       margin-top: 5px;
       max-height: 150px;
       overflow-y: auto;
+      background: #fff;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      padding: 0.5rem;
     }
     #destinationsList li {
       padding: 4px 8px;
-      border-bottom: 1px solid #ddd;
+      margin-bottom: 4px;
+      background: #fff;
+      border: 1px solid var(--card-border-color);
+      border-radius: var(--border-radius);
       cursor: move;
     }
     #destinationsList li:last-child {
-      border-bottom: none;
+      margin-bottom: 0;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      #appContainer {
+        flex-direction: column;
+      }
+      #rightPane {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+      }
     }
   </style>
 </head>
 <body>
-<div id="appContainer">
-  <!-- Left: Map Container -->
-  <div id="mapContainer">
-    <div id="map"></div>
-  </div>
-  <!-- Right: Controls & Log -->
-  <div id="rightPane">
-    <div id="controls">
-      <!-- 1. Cluster Polygon Section -->
-      <div class="section">
-        <h3>1. Cluster Polygon</h3>
-        <p>Use the Geoman drawing tools (top-left) to draw and edit a polygon representing the cluster area.<br>
-           When finished, the polygon is automatically saved.</p>
-        <button id="clearClusterBtn">Clear Cluster</button>
-      </div>
-
-      <!-- 2. Circle Zones Section -->
-      <div class="section">
-        <h3>2. Add Circle Zones</h3>
-        <p>Enter a radius (m), then click "Add Zone" and click inside the cluster to place a circular zone (up to 10 zones).</p>
-        <input type="number" id="zoneRadiusInput" placeholder="Radius (m)" />
-        <button id="addZoneBtn">Add Zone</button>
-      </div>
-
-      <!-- 3. Set Points A & B Section -->
-      <div class="section">
-        <h3>3. Points A & B</h3>
-        <p>Click "Set A & B" then click 2 points inside the cluster: first for A (red), second for B (blue).</p>
-        <button id="setABBtn">Set A & B</button>
-        <p>A: <span id="aCoords">[Not set]</span><br/>B: <span id="bCoords">[Not set]</span></p>
-      </div>
-
-      <!-- 4. Single Route & Simulation Section -->
-      <div class="section">
-        <h3>4. Path & Simulation</h3>
-        <p>Generate a path from A→B in N steps and simulate the route.</p>
-        <input type="number" id="numStepsInput" placeholder="# Steps" />
-        <button id="genPathBtn">Generate Path</button>
-        <button id="clearPathBtn">Clear Path</button>
-        <br/><br/>
-        <button id="startBtn">Start Simulation</button>
-        <button id="stopBtn">Stop Simulation</button>
-      </div>
-      
-      <!-- 5. Multiple Vehicles & Routes Section -->
-      <div class="section">
-        <h3>5. Multiple Vehicles & Routes</h3>
-        <p>Add vehicles with multiple destinations. Use these controls to build and simulate routes per vehicle.</p>
-        <button id="addVehicleBtn">Add Vehicle</button>
-        <button id="setVehicleStartBtn">Set Vehicle Start</button>
-        <button id="addDestinationBtn">Add Destination</button>
-        <button id="genVehicleRouteBtn">Generate Vehicle Route</button>
-        <button id="clearVehicleRouteBtn">Clear Vehicle Route</button>
-        <p>Current Vehicle: <span id="currentVehicleDisplay">None</span></p>
-        <p>Destinations (drag to reorder):</p>
-        <ul id="destinationsList"></ul>
-      </div>
+  <div id="appContainer">
+    <!-- Left: Map Container -->
+    <div id="mapContainer">
+      <div id="map"></div>
     </div>
-    <div id="log"><strong>Log Panel:</strong><br /></div>
-  </div>
-</div>
+    <!-- Right: Controls & Log -->
+    <div id="rightPane">
+      <div id="controls">
+        <!-- 1. Cluster Polygon Section -->
+        <div class="section">
+          <h3>1. Cluster Polygon</h3>
+          <p>Use the Geoman drawing tools (top-left) to draw and edit a polygon representing the cluster area.
+             When finished, the polygon is automatically saved.</p>
+          <button id="clearClusterBtn" class="btn">Clear Cluster</button>
+        </div>
 
-<!-- Scripts -->
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.min.js"></script>
-<script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
-<script src="script.js"></script>
+        <!-- 2. Circle Zones Section -->
+        <div class="section">
+          <h3>2. Add Circle Zones</h3>
+          <p>Enter a radius (m), then click "Add Zone" and click inside the cluster to place a circular zone (up to 10 zones).</p>
+          <input type="number" id="zoneRadiusInput" placeholder="Radius (m)" />
+          <button id="addZoneBtn" class="btn">Add Zone</button>
+        </div>
+
+        <!-- 3. Set Points A & B Section -->
+        <div class="section">
+          <h3>3. Points A & B</h3>
+          <p>Click "Set A & B" then click 2 points inside the cluster: first for A (red), second for B (blue).</p>
+          <button id="setABBtn" class="btn">Set A & B</button>
+          <p>A: <span id="aCoords">[Not set]</span><br/>B: <span id="bCoords">[Not set]</span></p>
+        </div>
+
+        <!-- 4. Single Route & Simulation Section -->
+        <div class="section">
+          <h3>4. Path & Simulation</h3>
+          <p>Generate a path from A→B in N steps and simulate the route.</p>
+          <input type="number" id="numStepsInput" placeholder="# Steps" />
+          <button id="genPathBtn" class="btn">Generate Path</button>
+          <button id="clearPathBtn" class="btn">Clear Path</button>
+          <br/><br/>
+          <button id="startBtn" class="btn">Start Simulation</button>
+          <button id="stopBtn" class="btn">Stop Simulation</button>
+        </div>
+        
+        <!-- 5. Multiple Vehicles & Routes Section -->
+        <div class="section">
+          <h3>5. Multiple Vehicles & Routes</h3>
+          <p>Add vehicles with multiple destinations. Use these controls to build and simulate routes per vehicle.</p>
+          <button id="addVehicleBtn" class="btn">Add Vehicle</button>
+          <button id="setVehicleStartBtn" class="btn">Set Vehicle Start</button>
+          <button id="addDestinationBtn" class="btn">Add Destination</button>
+          <button id="genVehicleRouteBtn" class="btn">Generate Vehicle Route</button>
+          <button id="clearVehicleRouteBtn" class="btn">Clear Vehicle Route</button>
+          <p>Current Vehicle: <span id="currentVehicleDisplay">None</span></p>
+          <p>Destinations (drag to reorder):</p>
+          <ul id="destinationsList"></ul>
+        </div>
+      </div>
+      <div id="log"><strong>Log Panel:</strong><br /></div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.min.js"></script>
+  <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
