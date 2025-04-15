@@ -19,12 +19,19 @@ export let markerA = null;
 export let markerB = null;
 export let markerDevice = null;
 export let path = [];
-export let pathIndex = 0;
-export let simulationRunning = false;
 export let zones = [];         // Array of zone objects: { circle, turfPoly }
 export let wasInsideZones = [];  // For simulation zone checks
 export let zoneCount = 0;
 export const maxZones = 10;
+
+/*************************************************
+  Mutable Simulation State
+  (Group simulationRunning and pathIndex so that we can update these properties without reassigning the object)
+**************************************************/
+export const simulationState = {
+  simulationRunning: false,
+  pathIndex: 0
+};
 
 /*************************************************
   Initialization Function: initMap
@@ -62,7 +69,9 @@ export function initMap() {
   
       // Convert drawn polygon to Turf.js polygon
       let latlngs = clusterPolygon.getLatLngs()[0];
-      while (Array.isArray(latlngs[0])) { latlngs = latlngs[0]; }
+      while (Array.isArray(latlngs[0])) { 
+        latlngs = latlngs[0]; 
+      }
       const coords = latlngs.map(pt => [pt.lng, pt.lat]);
       // Close the polygon by pushing the first coordinate to the end
       coords.push([coords[0][0], coords[0][1]]);
@@ -157,7 +166,7 @@ export function initMap() {
   
   // Event listener for starting the simulation
   document.getElementById("startBtn").addEventListener("click", () => {
-    if (simulationRunning) {
+    if (simulationState.simulationRunning) {
       logMessage("Simulation already running.");
       return;
     }
@@ -165,8 +174,8 @@ export function initMap() {
       logMessage("⚠️ Need at least 2 points in path.");
       return;
     }
-    simulationRunning = true;
-    pathIndex = 0;
+    simulationState.simulationRunning = true;
+    simulationState.pathIndex = 0;
     if (!markerDevice && path.length > 0) {
       markerDevice = L.marker(path[0], { icon: carEmojiIcon() }).addTo(map);
     } else if (markerDevice) {
@@ -182,11 +191,11 @@ export function initMap() {
   
   // Event listener for stopping the simulation
   document.getElementById("stopBtn").addEventListener("click", () => {
-    if (!simulationRunning) {
+    if (!simulationState.simulationRunning) {
       logMessage("Simulation is not running.");
       return;
     }
-    simulationRunning = false;
+    simulationState.simulationRunning = false;
     logMessage("Simulation stopped.");
   });
   
@@ -241,7 +250,7 @@ export function initMap() {
 **************************************************/
 function clearPath() {
   path = [];
-  pathIndex = 0;
+  simulationState.pathIndex = 0;
   if (markerDevice) {
     map.removeLayer(markerDevice);
     markerDevice = null;
@@ -253,13 +262,13 @@ function clearPath() {
   HELPER: moveDevice
 **************************************************/
 function moveDevice() {
-  if (!simulationRunning) return;
-  if (pathIndex >= path.length) {
+  if (!simulationState.simulationRunning) return;
+  if (simulationState.pathIndex >= path.length) {
     logMessage("End of simulation path reached.");
-    simulationRunning = false;
+    simulationState.simulationRunning = false;
     return;
   }
-  const [lat, lng] = path[pathIndex++];
+  const [lat, lng] = path[simulationState.pathIndex++];
   markerDevice.setLatLng([lat, lng]);
   
   // Check each zone for entry/exit events
@@ -337,3 +346,4 @@ function randomColor() {
   }
   return color;
 }
+

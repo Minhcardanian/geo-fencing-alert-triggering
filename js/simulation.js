@@ -1,9 +1,17 @@
 // simulation.js
 // Module: Simulation Logic and Event Listeners
 
-// Import shared globals from script.js.
-// (These variables must be exported from script.js.)
-import { pointA, pointB, map, markerDevice, path, pathIndex, simulationRunning, zones, wasInsideZones } from './script.js';
+// Import shared globals and state from script.js.
+// Note: We do NOT import a separate markerDevice; instead, we use simulationState.markerDevice.
+import { 
+  pointA, 
+  pointB, 
+  map, 
+  path, 
+  simulationState, 
+  zones, 
+  wasInsideZones 
+} from './script.js';
 // Import utility functions from utils.js.
 import { logMessage, carEmojiIcon } from './utils.js';
 
@@ -27,6 +35,7 @@ function generatePath() {
     return;
   }
   clearPath(); // Reset any existing simulation path
+  
   let steps = parseInt(document.getElementById("numStepsInput").value, 10);
   if (Number.isNaN(steps) || steps < 2) steps = 10;
   
@@ -42,10 +51,10 @@ function generatePath() {
   }
   
   logMessage(`🔄 Generated path with ${steps} steps (size: ${path.length}).`);
-  if (!markerDevice && path.length > 0) {
-    markerDevice = L.marker(path[0], { icon: carEmojiIcon() }).addTo(map);
-  } else if (markerDevice) {
-    markerDevice.setLatLng(path[0]);
+  if (!simulationState.markerDevice && path.length > 0) {
+    simulationState.markerDevice = L.marker(path[0], { icon: carEmojiIcon() }).addTo(map);
+  } else if (simulationState.markerDevice) {
+    simulationState.markerDevice.setLatLng(path[0]);
   }
 }
 
@@ -54,11 +63,10 @@ function generatePath() {
  */
 export function clearPath() {
   path.length = 0;
-  // Reset the path index
-  pathIndex = 0;
-  if (markerDevice) {
-    map.removeLayer(markerDevice);
-    markerDevice = null;
+  simulationState.pathIndex = 0;
+  if (simulationState.markerDevice) {
+    map.removeLayer(simulationState.markerDevice);
+    simulationState.markerDevice = null;
   }
   logMessage("🧹 Path cleared.");
 }
@@ -67,7 +75,7 @@ export function clearPath() {
  * Starts the simulation by resetting necessary indices, placing the marker, and beginning the movement loop.
  */
 function startSimulation() {
-  if (simulationRunning) {
+  if (simulationState.simulationRunning) {
     logMessage("Simulation already running.");
     return;
   }
@@ -75,17 +83,20 @@ function startSimulation() {
     logMessage("⚠️ Need at least 2 points in path.");
     return;
   }
-  simulationRunning = true;
-  pathIndex = 0;
-  if (!markerDevice && path.length > 0) {
-    markerDevice = L.marker(path[0], { icon: carEmojiIcon() }).addTo(map);
-  } else if (markerDevice) {
-    markerDevice.setLatLng(path[0]);
+  simulationState.simulationRunning = true;
+  simulationState.pathIndex = 0;
+  
+  if (!simulationState.markerDevice && path.length > 0) {
+    simulationState.markerDevice = L.marker(path[0], { icon: carEmojiIcon() }).addTo(map);
+  } else if (simulationState.markerDevice) {
+    simulationState.markerDevice.setLatLng(path[0]);
   }
-  // Reset zone flag array
+  
+  // Reset the zone check flags.
   for (let i = 0; i < wasInsideZones.length; i++) {
     wasInsideZones[i] = false;
   }
+  
   logMessage("Simulation started.");
   moveDevice();
 }
@@ -94,11 +105,11 @@ function startSimulation() {
  * Stops the simulation.
  */
 function stopSimulation() {
-  if (!simulationRunning) {
+  if (!simulationState.simulationRunning) {
     logMessage("Simulation is not running.");
     return;
   }
-  simulationRunning = false;
+  simulationState.simulationRunning = false;
   logMessage("Simulation stopped.");
 }
 
@@ -106,16 +117,16 @@ function stopSimulation() {
  * Recursively moves the simulation marker along the generated path while checking for zone entry/exit.
  */
 function moveDevice() {
-  if (!simulationRunning) return;
-  if (pathIndex >= path.length) {
+  if (!simulationState.simulationRunning) return;
+  if (simulationState.pathIndex >= path.length) {
     logMessage("End of simulation path reached.");
-    simulationRunning = false;
+    simulationState.simulationRunning = false;
     return;
   }
-  const [lat, lng] = path[pathIndex++];
-  markerDevice.setLatLng([lat, lng]);
+  const [lat, lng] = path[simulationState.pathIndex++];
+  simulationState.markerDevice.setLatLng([lat, lng]);
   
-  // Check each zone for entry/exit events
+  // Check each zone for entry/exit events.
   zones.forEach((z, idx) => {
     const pt = turf.point([lng, lat]);
     const isInside = turf.booleanPointInPolygon(pt, z.turfPoly);
@@ -128,8 +139,8 @@ function moveDevice() {
     wasInsideZones[idx] = isInside;
   });
   
-  setTimeout(moveDevice, 1200); // Adjust timing as needed
+  setTimeout(moveDevice, 1200);
 }
 
-// Optionally, if needed externally, you can export moveDevice
+// Optionally, export moveDevice for external access.
 export { moveDevice };
